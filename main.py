@@ -2,6 +2,8 @@ import geopandas as gpd
 import pandas as pd
 from shapely.wkt import loads
 from tqdm import tqdm
+from datetime import datetime
+import os
 
 class WellboreDetails:
     def process_wellbore_intersections(self, csv_file, geojson_file):
@@ -17,6 +19,9 @@ class WellboreDetails:
 
         # Load GeoJSON file and calculate intersections
         results = self.calculate_borestick_intersection_percentage(wkt_boresticks, geojson_file)
+
+        # Export results to CSV
+        self.export_results_to_csv(results)
 
         return results
 
@@ -66,40 +71,34 @@ class WellboreDetails:
             return (intersected_length / total_length * 100) if total_length > 0 else 0
         return 0
 
-    def check_uwi(self, uwi, csv_file, geojson_file):
-        well_data = pd.read_csv(csv_file)
+    def export_results_to_csv(self, results):
+        output_data = []
+        for result in results:
+            uwi = result['uwi']
+            basin = result['basin']
+            for intersection in result['intersections']:
+                output_data.append({
+                    'uwi': uwi,
+                    'basin': basin,
+                    'formation': intersection[0],
+                    'formation_name': intersection[1],
+                    'intersection_percentage': intersection[2]
+                })
 
-        # Filter for the specific UWI
-        specific_well = well_data[(well_data['uwi'] == uwi) & (well_data['basin'] == "WILLISTON BASIN")]
+        # Create output directory if it doesn't exist
+        output_dir = 'static/output'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-        if specific_well.empty:
-            print(f"No data found for UWI: {uwi} in WILLISTON BASIN")
-            return []
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'static/output/intersection_results_{timestamp}.csv'
 
-        wkt_boresticks = specific_well[['uwi', 'borestick_3d', 'basin']].values.tolist()
+        # Export to CSV
+        pd.DataFrame(output_data).to_csv(filename, index=False)
+        print(f"Results exported to {filename}")
 
-        # Load GeoJSON file and calculate intersections
-        return self.calculate_borestick_intersection_percentage(wkt_boresticks, geojson_file)
-
+# Execution example
 if __name__ == "__main__":
-    geojson_file = './static/input/willistonGeo84_2024.geojson'  # Replace with your GeoJSON file path
-    csv_file = './static/input/well_header.csv'  # Replace with your CSV file path
-
-    wellbore_details = WellboreDetails()
-    results = wellbore_details.process_wellbore_intersections(csv_file, geojson_file)
-
-    for result in results:
-        print(f"UWI: {result['uwi']}, Basin: {result['basin']}")
-        for intersection in result['intersections']:
-            print(f"  Polygon: {intersection[0]}, Formation: {intersection[1]}, Percentage: {intersection[2]:.2f}%")
-
-    # Example of checking a specific UWI
-    # uwi_to_check = "1234567890"  # Replace with the UWI you want to check
-    # specific_results = wellbore_details.check_uwi(uwi_to_check, csv_file, geojson_file)
-
-    # if specific_results:
-    #     print(f"Results for UWI: {uwi_to_check}")
-    #     for result in specific_results:
-    #         print(f"  UWI: {result['uwi']}, Basin: {result['basin']}")
-    #         for intersection in result['intersections']:
-    #             print(f"    Polygon: {intersection[0]}, Formation: {intersection[1]}, Percentage: {intersection[2]:.2f}%")
+    wellbore_processor = WellboreDetails()
+    results = wellbore_processor.process_wellbore_intersections('static/input/well_header.csv', 'static/input/willistonGeo84_2024.geojson')

@@ -1,0 +1,72 @@
+# Project: Detect WKT Line Intersections with Polygons
+
+## Overview
+This project provides a Python application that processes a CSV file containing wellbore data and a GeoJSON file containing polygons. It identifies intersections between the wellbore paths and the polygons, calculates the percentage of the wellbore length intersecting with each polygon, and exports the results to a CSV file.
+
+## Prerequisites
+Ensure the following Python libraries are installed:
+- `geopandas`
+- `pandas`
+- `shapely`
+- `tqdm`
+
+Install these packages using:
+```bash
+pip install geopandas pandas shapely tqdm
+```
+
+## Project Structure
+- **`static/input`**: Directory for input files (`well_header.csv` and `geojson_file.geojson`).
+- **`static/output`**: Directory for the exported CSV files containing the results.
+- **`detect_wkt_line_polygons.py`**: The main Python script that handles processing and exporting.
+
+## Input Files
+### `well_header.csv`
+A CSV file containing the following columns:
+- `uwi`: Unique well identifier.
+- `basin`: The geological basin of the well.
+- `target_formation`: The formation targeted by the well.
+- `borestick_3d`: WKT representation of the wellbore path as a 3D `LINESTRING`.
+- `borestick_3d` should have coordinates formatted as `LINESTRING Z (lon lat elevation, lon lat elevation, ...)`.
+
+### `geojson_file.geojson`
+A GeoJSON file containing polygons with the following relevant properties:
+- `TCA_SHORTN`: A unique identifier for the polygon.
+- `FORMATION_`: Name of the formation.
+
+## How It Works
+1. The script reads `well_header.csv` and filters for entries where `basin` is `WILLISTON BASIN`.
+2. For each well, it reads the `borestick_3d` as a 3D `LINESTRING`.
+3. It loads the polygons from the GeoJSON file and uses a spatial index to efficiently identify potential intersecting polygons.
+4. It calculates the percentage of the wellbore intersecting each polygon.
+5. Results are saved to a CSV file with the format `intersection_results_YYYYMMDD_HHMMSS.csv` in the `static/output` directory.
+
+## Code Execution
+Run the script directly:
+```bash
+python detect_wkt_line_polygons.py
+```
+
+## Output
+The script will export a CSV file to `static/output/` containing the following columns:
+- `uwi`: Well identifier.
+- `basin`: Basin name.
+- `formation`: The formation ID.
+- `formation_name`: Name of the formation.
+- `intersection_percentage`: Percentage of the wellbore length that intersects the polygon.
+
+## Example
+To run the script, modify the execution block in `detect_wkt_line_polygons.py` with the appropriate file paths:
+```python
+if __name__ == "__main__":
+    wellbore_processor = WellboreDetails()
+    results = wellbore_processor.process_wellbore_intersections('static/input/well_header.csv', 'static/input/willistonGeo84_2024.geojson')
+```
+
+## Notes
+- Ensure the input files are placed in the `static/input` directory.
+- The output will be saved in the `static/output` directory with a timestamped filename.
+
+---
+This project is designed to help analyze and extract valuable spatial information from wellbore data and geological formations.
+
