@@ -1,0 +1,8 @@
+# Virtual Environment
+venv/
+
+# Static folder
+static/
+
+# VS Code
+.vscode/
