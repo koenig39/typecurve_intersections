@@ -56,7 +56,22 @@ class WellboreDetails:
             for _, row in possible_matches.iterrows():
                 percentage = self.calculate_intersection_percentage(borestick, row.geometry)
                 if percentage > 0:
-                    intersections.append((row['TCA_SHORTN'], row['FORMATION_'], percentage))
+                    # Access properties directly from the GeoDataFrame row
+                    intersection_data = {
+                        'uwi': uwi,
+                        'PV_BASIN': row['PV_BASIN'],
+                        'FORMATION_': row['FORMATION_'],
+                        'TCA_SHORTN': row['TCA_SHORTN'],
+                        'intersection_percentage': percentage,
+                        'basin': basin,
+                        'UniqueId': row['UniqueId'],
+                        'TypeId': row['TypeId'],
+                        'CustomClr': row['CustomClr'],
+                        'TCA_NAME': row['TCA_NAME'],
+                        'IsPartial': row['IsPartial']
+                    }
+                    intersections.append(intersection_data)
+
 
             if intersections:
                 results.append({'uwi': uwi, 'basin': basin, 'intersections': intersections})
@@ -77,13 +92,11 @@ class WellboreDetails:
             uwi = result['uwi']
             basin = result['basin']
             for intersection in result['intersections']:
-                output_data.append({
-                    'uwi': uwi,
-                    'basin': basin,
-                    'formation': intersection[0],
-                    'formation_name': intersection[1],
-                    'intersection_percentage': intersection[2]
-                })
+                # Add uwi and basin to the intersection properties
+                intersection['uwi'] = uwi
+                intersection['basin'] = basin
+                
+                output_data.append(intersection)
 
         # Create output directory if it doesn't exist
         output_dir = 'static/output'
@@ -95,7 +108,7 @@ class WellboreDetails:
         filename = f'static/output/intersection_results_{timestamp}.csv'
 
         # Export to CSV
-        pd.DataFrame(output_data).to_csv(filename, index=False)
+        pd.DataFrame(output_data).rename(columns=str.lower).to_csv(filename, index=False)
         print(f"Results exported to {filename}")
 
 # Execution example

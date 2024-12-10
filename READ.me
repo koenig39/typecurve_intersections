@@ -1,72 +1,133 @@
-# Project: Detect WKT Line Intersections with Polygons
+# Wellbore Intersections Processor
 
 ## Overview
-This project provides a Python application that processes a CSV file containing wellbore data and a GeoJSON file containing polygons. It identifies intersections between the wellbore paths and the polygons, calculates the percentage of the wellbore length intersecting with each polygon, and exports the results to a CSV file.
+This Python script calculates the percentage of intersection between wellbore trajectories (boresticks) and specified geological regions defined in a GeoJSON file. The results are exported as a CSV file for further analysis.
 
-## Prerequisites
-Ensure the following Python libraries are installed:
+---
+
+## Features
+- Filters wellbore data by basin (e.g., "WILLISTON BASIN").
+- Processes wellbore trajectories in WKT (Well-Known Text) format.
+- Reads geological region definitions from a GeoJSON file.
+- Calculates intersection percentages between wellbore trajectories and regions.
+- Exports detailed results, including metadata, to a timestamped CSV file.
+
+---
+
+## Requirements
+
+### Python Libraries:
 - `geopandas`
 - `pandas`
 - `shapely`
 - `tqdm`
 
-Install these packages using:
+Install dependencies using:
 ```bash
 pip install geopandas pandas shapely tqdm
 ```
 
-## Project Structure
-- **`static/input`**: Directory for input files (`well_header.csv` and `geojson_file.geojson`).
-- **`static/output`**: Directory for the exported CSV files containing the results.
-- **`detect_wkt_line_polygons.py`**: The main Python script that handles processing and exporting.
+### Input Files:
+1. **CSV File** (`static/input/well_header.csv`):
+   - Contains wellbore data with columns:
+     - `uwi`: Unique wellbore identifier.
+     - `borestick_3d`: WKT representation of boresticks.
+     - `basin`: Basin name (e.g., "WILLISTON BASIN").
 
-## Input Files
-### `well_header.csv`
-A CSV file containing the following columns:
-- `uwi`: Unique well identifier.
-- `basin`: The geological basin of the well.
-- `target_formation`: The formation targeted by the well.
-- `borestick_3d`: WKT representation of the wellbore path as a 3D `LINESTRING`.
-- `borestick_3d` should have coordinates formatted as `LINESTRING Z (lon lat elevation, lon lat elevation, ...)`.
-
-### `geojson_file.geojson`
-A GeoJSON file containing polygons with the following relevant properties:
-- `TCA_SHORTN`: A unique identifier for the polygon.
-- `FORMATION_`: Name of the formation.
-
-## How It Works
-1. The script reads `well_header.csv` and filters for entries where `basin` is `WILLISTON BASIN`.
-2. For each well, it reads the `borestick_3d` as a 3D `LINESTRING`.
-3. It loads the polygons from the GeoJSON file and uses a spatial index to efficiently identify potential intersecting polygons.
-4. It calculates the percentage of the wellbore intersecting each polygon.
-5. Results are saved to a CSV file with the format `intersection_results_YYYYMMDD_HHMMSS.csv` in the `static/output` directory.
-
-## Code Execution
-Run the script directly:
-```bash
-python detect_wkt_line_polygons.py
-```
-
-## Output
-The script will export a CSV file to `static/output/` containing the following columns:
-- `uwi`: Well identifier.
-- `basin`: Basin name.
-- `formation`: The formation ID.
-- `formation_name`: Name of the formation.
-- `intersection_percentage`: Percentage of the wellbore length that intersects the polygon.
-
-## Example
-To run the script, modify the execution block in `detect_wkt_line_polygons.py` with the appropriate file paths:
-```python
-if __name__ == "__main__":
-    wellbore_processor = WellboreDetails()
-    results = wellbore_processor.process_wellbore_intersections('static/input/well_header.csv', 'static/input/willistonGeo84_2024.geojson')
-```
-
-## Notes
-- Ensure the input files are placed in the `static/input` directory.
-- The output will be saved in the `static/output` directory with a timestamped filename.
+2. **GeoJSON File** (`static/input/willistonGeo84_2024.geojson`):
+   - Defines geological regions with properties including:
+     - `UniqueId`
+     - `TypeId`
+     - `CustomClr`
+     - `TCA_SHORTN`
+     - `PV_BASIN`
+     - `FORMATION_`
+     - `TCA_NAME`
+     - `IsPartial`
 
 ---
-This project is designed to help analyze and extract valuable spatial information from wellbore data and geological formations.
+
+## How It Works
+1. **Data Filtering**:
+   - Filters wellbore data to include only rows with a specified basin and valid `borestick_3d` values.
+
+2. **Geometry Processing**:
+   - Converts WKT strings to Shapely geometries.
+   - Reads GeoJSON and applies optional filtering to exclude irrelevant regions (e.g., `TCA_SHORTN` values like `MB_NONEx`).
+
+3. **Intersection Calculation**:
+   - Uses bounding boxes for initial filtering with spatial indexing.
+   - Calculates the percentage of intersection between boresticks and polygons.
+
+4. **Result Export**:
+   - Exports results to a CSV file in `static/output` with column names in lowercase.
+
+---
+
+## Output
+### CSV File
+- Generated in the `static/output` directory with a filename pattern: `intersection_results_<timestamp>.csv`
+- Columns:
+  - `uwi`: Unique wellbore identifier.
+  - `pv_basin`, `formation_`, `tca_shortn`: Geological metadata.
+  - `intersection_percentage`: Percentage of intersection.
+  - `basin`: Wellbore basin.
+  - Additional GeoJSON properties.
+
+---
+
+## Example Usage
+### Running the Script
+Execute the script with:
+```bash
+python main.py
+```
+
+### Example Input
+#### well_header.csv
+| uwi         | borestick_3d     | basin           |
+|-------------|------------------|-----------------|
+| 123456789   | LINESTRING(...)  | WILLISTON BASIN |
+| 987654321   | LINESTRING(...)  | OTHER BASIN     |
+
+#### willistonGeo84_2024.geojson
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "UniqueId": 1,
+        "TCA_SHORTN": "MB_MID_MCKENZIE",
+        "PV_BASIN": "WB",
+        "FORMATION_": "MB",
+        "TCA_NAME": "MB_MID_MCKENZIE",
+        "IsPartial": "N"
+      },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [...]
+      }
+    }
+  ]
+}
+```
+
+### Example Output
+#### intersection_results_<timestamp>.csv
+| uwi         | pv_basin | formation_ | tca_shortn       | intersection_percentage | basin           | uniqueid | typeid     |
+|-------------|----------|------------|------------------|--------------------------|-----------------|----------|------------|
+| 123456789   | WB       | MB         | MB_MID_MCKENZIE  | 65.23                   | WILLISTON BASIN | 1        | 144184204  |
+
+---
+
+## Notes
+- Ensure input files are correctly formatted.
+- Modify filtering logic in `calculate_borestick_intersection_percentage` if necessary.
+
+---
+
+## Contact
+For questions or improvements, feel free to reach out to the development team.
 
